@@ -42,12 +42,12 @@ main{ max-width:560px; margin:0 auto; padding:14px 16px 150px; }
 .tete h1{ font-size:30px; line-height:1.1; margin:6px 0 4px; letter-spacing:-0.015em; }
 .tete p{ margin:0 0 18px; color:var(--encre-douce); font-size:16px; }
 
-.onglets{ display:flex; gap:4px; background:var(--carte); border:1px solid var(--trait);
+.onglets{ display:flex; gap:2px; overflow-x:auto; background:var(--carte); border:1px solid var(--trait);
   border-radius:14px; padding:4px; margin-bottom:22px; }
-.onglet{ flex:1; border:0; background:transparent; color:var(--encre); font:inherit; font-weight:700;
-  font-size:17px; padding:10px 4px; border-radius:10px; min-height:50px; cursor:pointer; }
+.onglet{ flex:1 1 auto; white-space:nowrap; border:0; background:transparent; color:var(--encre); font:inherit; font-weight:700;
+  font-size:16px; padding:10px 6px; border-radius:10px; min-height:50px; cursor:pointer; min-width:0; }
 .onglet[aria-selected="true"]{ background:var(--choix); color:var(--choix-txt); }
-.nb{ display:inline-block; min-width:24px; margin-left:6px; padding:0 7px; border-radius:12px;
+.nb{ display:inline-block; min-width:22px; margin-left:5px; padding:0 6px; border-radius:12px;
   background:var(--poste); color:var(--poste-encre); font-size:14px; line-height:22px; }
 
 .champ{ margin:0 0 20px; padding:0; border:0; min-width:0; }
@@ -183,8 +183,8 @@ const PRESTATIONS = ["Toilette", "Aide au lever", "Repas", "Ménage", "Courses",
 const LIBELLES = ["courses", "essence", "restaurant", "pharmacie", "boulangerie", "tabac", "coiffeur",
   "vêtements", "cadeau", "vétérinaire", "croquettes", "parking", "péage", "cinéma", "amazon", "leboncoin"];
 const ONGLETS = PROFIL === "maxime"
-  ? [["HEURES", "Heures"], ["DEPENSE", "Dépense"], ["REVENU", "Revenu"]]
-  : [["DEPENSE", "Dépense"], ["REVENU", "Revenu"]];
+  ? [["HEURES", "Heures"], ["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"]]
+  : [["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"]];
 const PRENOMS = ["maxime", "max", "dounia"];
 const CLE = "carnet-" + PROFIL;
 
@@ -193,10 +193,11 @@ const sansAccent = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLow
 
 let etat = {
   onglet: ONGLETS[0][0],
-  listes: { HEURES: [], DEPENSE: [], REVENU: [] },
+  listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
   h: { jour: aujourdHui(), qui: "", deb: "", fin: "", presta: "", autre: "" },
   d: { montant: "", libelle: "", pour: "commun", fois: 0 },
   r: { montant: "", libelle: "", pour: "commun" },
+  s: { montant: "", qui: PROFIL },
 };
 
 function charger() {
@@ -329,6 +330,36 @@ function ajouterArgent(type) {
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
 
+function formSalaire(z) {
+  const s = etat.s;
+  z.innerHTML = `
+    <div class="champ"><label for="montant">Montant reçu
+      <span class="aide">Le net arrivé sur le compte. Envoie-le le jour où il arrive : il compte dans ce mois-là.</span></label>
+      <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}"><span>€</span></div></div>
+    <fieldset class="champ"><legend>Salaire de</legend><div class="puces" id="qui"></div></fieldset>
+    <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
+    <p class="message" id="msg"></p>`;
+  const q = z.querySelector("#qui");
+  for (const [cle, nom] of [["maxime", "Maxime"], ["dounia", "Dounia"]])
+    q.appendChild(puce(nom, s.qui === cle, () => { s.qui = cle; formSalaire(z); }));
+  z.querySelector("#montant").oninput = e => s.montant = e.target.value;
+  z.querySelector("#ajouter").onclick = ajouterSalaire;
+}
+
+function ajouterSalaire() {
+  const s = etat.s, msg = document.getElementById("msg");
+  const brut = s.montant.trim().replace(/\s/g, "").replace(".", ",");
+  if (!/^\d+(,\d{1,2})?$/.test(brut) || Number(brut.replace(",", ".")) <= 0) {
+    msg.className = "message erreur"; msg.textContent = "Le montant doit être un nombre, par exemple 1650 ou 1650,40.";
+    document.getElementById("montant").setAttribute("aria-invalid", "true");
+    return;
+  }
+  etat.listes.SALAIRE.push(`${brut} euros salaire ${s.qui === "maxime" ? "Maxime" : "Dounia"}`);
+  s.montant = ""; s.qui = PROFIL;
+  sauver(); tout();
+  const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté.";
+}
+
 // ───────────────────────────────── liste et envoi
 function dessinerListe() {
   const z = document.getElementById("liste"), L = etat.listes[etat.onglet];
@@ -371,7 +402,9 @@ function copier(id, bouton) {
 function tout() {
   dessinerOnglets();
   const z = document.getElementById("formulaire");
-  if (etat.onglet === "HEURES") formHeures(z); else formArgent(z, etat.onglet);
+  if (etat.onglet === "HEURES") formHeures(z);
+  else if (etat.onglet === "SALAIRE") formSalaire(z);
+  else formArgent(z, etat.onglet);
   dessinerListe();
 }
 
