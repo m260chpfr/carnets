@@ -359,14 +359,12 @@ function formArgent(z, type) {
     <div class="champ"><label for="libelle">${type === "DEPENSE" ? "Pour quoi" : "D'où vient ce revenu"}
       <span class="aide">Un ou deux mots, sans prénom : « courses », « essence »…</span></label>
       <input type="text" id="libelle" list="libelles" autocomplete="off" value="${s.libelle.replace(/"/g, "&quot;")}">
-      <datalist id="libelles">${LIBELLES.map(l => `<option value="${l}">`).join("")}</datalist></div>`;
-  // Pour une dépense, le libellé est rempli AVANT le montant : les montants déjà
-  // utilisés pour ce libellé doivent donc apparaître juste sous le champ Montant,
-  // au moment où l'utilisateur va justement le remplir (pas plus haut, hors de vue).
+      <datalist id="libelles">${LIBELLES.map(l => `<option value="${l}">`).join("")}</datalist>
+      ${type === "DEPENSE" ? '<span class="aide" id="aide-montants"></span>' : ""}</div>`;
   const champMontant = `
     <div class="champ"><label for="montant">Montant</label>
       <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}" ${type === "DEPENSE" ? 'list="montants_recents"' : ""}><span>€</span></div>
-      ${type === "DEPENSE" ? '<datalist id="montants_recents"></datalist><span class="aide" id="aide-montants"></span>' : ""}</div>`;
+      ${type === "DEPENSE" ? '<datalist id="montants_recents"></datalist>' : ""}</div>`;
 
   z.innerHTML = champJour + (type === "DEPENSE" ? champLibelle + champMontant : champMontant + champLibelle) + `
     <fieldset class="champ"><legend>${quiTitre}</legend><div class="puces" id="pour"></div></fieldset>
