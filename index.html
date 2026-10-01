@@ -73,6 +73,12 @@ button:focus-visible, input:focus-visible{ outline:3px solid var(--poste); outli
 .somme input{ padding-right:48px; }
 .somme span{ position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--encre-douce); font-size:21px; pointer-events:none; }
 
+.apercu{ margin:0 0 20px; padding:12px 14px; background:var(--carte); border:1px solid var(--trait);
+  border-left:5px solid var(--poste); border-radius:10px; font-size:15px; color:var(--encre-douce); }
+.apercu strong{ color:var(--encre); }
+.apercu .ligne-ech{ display:flex; justify-content:space-between; gap:10px; padding:2px 0; }
+.apercu .ligne-ech + .ligne-ech{ border-top:1px dashed var(--trait); }
+
 .ajouter{ width:100%; font:inherit; font-weight:700; font-size:18px; border:2px dashed var(--encre);
   background:transparent; color:var(--encre); border-radius:12px; min-height:58px; cursor:pointer; }
 .message{ margin:10px 0 0; min-height:1.45em; font-weight:700; }
@@ -187,17 +193,50 @@ const ONGLETS = PROFIL === "maxime"
   : [["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"]];
 const PRENOMS = ["maxime", "max", "dounia"];
 const CLE = "carnet-" + PROFIL;
+const MOIS_NOMS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+  "août", "septembre", "octobre", "novembre", "décembre"];
 
 const aujourdHui = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-const sansAccent = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const sansAccent = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// ───────────────────────────────── aide : dates, montants, aperçu des échéances
+function moisDe(jourISO) {
+  const [a, m] = jourISO.split("-");
+  return MOIS_NOMS[Number(m) - 1] + " " + a;
+}
+function dateFR(d) {
+  return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+}
+function centsDepuis(brut) {
+  const n = (brut || "").trim().replace(/\s/g, "").replace(".", ",");
+  if (!/^\d+(,\d{1,2})?$/.test(n)) return null;
+  return Math.round(Number(n.replace(",", ".")) * 100);
+}
+function euros(cents) { return (cents / 100).toFixed(2).replace(".", ","); }
+// Reproduit exactement budget_ingest.py (ecrire) : montant/n arrondi, la dernière
+// échéance récupère l'écart d'arrondi ; chaque échéance avance de 30 jours (pas un
+// mois calendaire, qui lui n'a pas toujours 30 jours).
+function echeances(totalCents, n, jourISO) {
+  // Arithmétique calendaire (comme budget_ingest.py: date + timedelta(days=30*k)),
+  // jamais en millisecondes : un calcul en ms décale d'un jour au passage heure
+  // d'été/hiver (ex. fin octobre), ce qui désynchronise l'aperçu du résultat réel.
+  const base = Math.round(totalCents / n);
+  const [y, m, d] = jourISO.split("-").map(Number);
+  const L = [];
+  for (let k = 0; k < n; k++) {
+    const dt = new Date(y, m - 1, d + k * 30);
+    L.push({ date: dt, cents: k < n - 1 ? base : totalCents - base * (n - 1) });
+  }
+  return L;
+}
 
 let etat = {
   onglet: ONGLETS[0][0],
   listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
   h: { jour: aujourdHui(), qui: "", deb: "", fin: "", presta: "", autre: "" },
-  d: { montant: "", libelle: "", pour: "commun", fois: 0 },
-  r: { montant: "", libelle: "", pour: "commun" },
-  s: { montant: "", qui: PROFIL },
+  d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui() },
+  r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui() },
+  s: { montant: "", qui: PROFIL, jour: aujourdHui() },
 };
 
 function charger() {
@@ -284,10 +323,37 @@ function ajouterHeure() {
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
 
+// ───────────────────────────────── aperçu en temps réel (Dépense / Revenu)
+function majApercu(type) {
+  const s = type === "DEPENSE" ? etat.d : etat.r;
+  const zone = document.getElementById("apercu");
+  if (!zone) return;
+  const mens = moisDe(s.jour);
+  const cents = centsDepuis(s.montant);
+  if (cents === null) {
+    zone.innerHTML = `Comptera pour <strong>${mens}</strong>. Tape un montant pour voir le détail.`;
+    return;
+  }
+  if (type !== "DEPENSE" || !s.fois) {
+    zone.innerHTML = `<strong>${euros(cents)} €</strong> le ${dateFR(new Date(s.jour + "T00:00:00"))} — comptera pour <strong>${mens}</strong>.`;
+    return;
+  }
+  // Dépense en plusieurs fois : le total dépend du mode choisi.
+  const total = s.mode === "mensuel" ? cents * s.fois : cents;
+  const L = echeances(total, s.fois, s.jour);
+  let html = s.mode === "mensuel"
+    ? `${euros(cents)} €/mois × ${s.fois} = <strong>${euros(total)} €</strong> au total, réparti en ${s.fois} fois :`
+    : `<strong>${euros(total)} €</strong> au total, réparti en ${s.fois} fois :`;
+  html += L.map(x => `<div class="ligne-ech"><span>${dateFR(x.date)}</span><span>${euros(x.cents)} €</span></div>`).join("");
+  zone.innerHTML = html;
+}
+
 function formArgent(z, type) {
   const s = type === "DEPENSE" ? etat.d : etat.r;
   const quiTitre = type === "DEPENSE" ? "Pour qui" : "À qui revient ce revenu";
   z.innerHTML = `
+    <div class="champ"><label for="jour">Date</label>
+      <input type="date" id="jour" value="${s.jour}"></div>
     <div class="champ"><label for="montant">Montant</label>
       <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}"><span>€</span></div></div>
     <div class="champ"><label for="libelle">${type === "DEPENSE" ? "Pour quoi" : "D'où vient ce revenu"}
@@ -295,7 +361,9 @@ function formArgent(z, type) {
       <input type="text" id="libelle" list="libelles" autocomplete="off" value="${s.libelle.replace(/"/g, "&quot;")}">
       <datalist id="libelles">${LIBELLES.map(l => `<option value="${l}">`).join("")}</datalist></div>
     <fieldset class="champ"><legend>${quiTitre}</legend><div class="puces" id="pour"></div></fieldset>
-    ${type === "DEPENSE" ? '<fieldset class="champ"><legend>Payé en plusieurs fois <span class="aide">Le montant total, étalé sur les mois qui viennent</span></legend><div class="puces" id="fois"></div></fieldset>' : ""}
+    ${type === "DEPENSE" ? '<fieldset class="champ"><legend>Payé en plusieurs fois</legend><div class="puces" id="fois"></div></fieldset>' : ""}
+    ${type === "DEPENSE" && s.fois ? '<fieldset class="champ"><legend>Le montant tapé ci-dessus est <span class="aide">« Total » si tu connais le prix complet, « Mensualité » si tu connais plutôt ce que ça te coûte par mois</span></legend><div class="puces" id="mode"></div></fieldset>' : ""}
+    <p class="apercu" id="apercu"></p>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
     <p class="message" id="msg"></p>`;
   const pour = z.querySelector("#pour");
@@ -305,10 +373,17 @@ function formArgent(z, type) {
     const f = z.querySelector("#fois");
     for (const n of [0, 2, 3, 4, 10])
       f.appendChild(puce(n ? n + " fois" : "En une fois", s.fois === n, () => { s.fois = n; formArgent(z, type); }));
+    if (s.fois) {
+      const md = z.querySelector("#mode");
+      for (const [cle, nom] of [["total", "Total"], ["mensuel", "Mensualité"]])
+        md.appendChild(puce(nom, s.mode === cle, () => { s.mode = cle; formArgent(z, type); }));
+    }
   }
-  z.querySelector("#montant").oninput = e => s.montant = e.target.value;
+  z.querySelector("#jour").onchange = e => { s.jour = e.target.value; majApercu(type); };
+  z.querySelector("#montant").oninput = e => { s.montant = e.target.value; majApercu(type); };
   z.querySelector("#libelle").oninput = e => s.libelle = e.target.value;
   z.querySelector("#ajouter").onclick = () => ajouterArgent(type);
+  majApercu(type);
 }
 
 function ajouterArgent(type) {
@@ -322,10 +397,18 @@ function ajouterArgent(type) {
   const mots = sansAccent(lib).split(/[^a-z0-9]+/);
   if (mots.some(m => PRENOMS.includes(m))) return err("Pas de prénom dans ce champ : utilise les boutons en dessous.");
   if (/\b\d{1,2}\s*x\b/i.test(lib)) return err("Pour payer en plusieurs fois, utilise les boutons plutôt que « 4x ».");
+  if (!s.jour) return err("Choisis une date.");
   const qui = { commun: " Maxime Dounia", maxime: " Maxime", dounia: " Dounia" }[s.pour];
   const fois = type === "DEPENSE" && s.fois ? " " + s.fois + "x" : "";
-  etat.listes[type].push(`${brut} euros ${lib}${fois}${qui}`);
-  s.montant = ""; s.libelle = ""; s.fois = 0; s.pour = "commun";
+  // Le moteur attend toujours le montant TOTAL : si la mensualité a été tapée, on
+  // multiplie ici avant l'envoi plutôt que de changer ce que le moteur enregistre.
+  let montantEnvoye = brut;
+  if (type === "DEPENSE" && s.fois && s.mode === "mensuel") {
+    const cents = centsDepuis(s.montant) * s.fois;
+    montantEnvoye = euros(cents);
+  }
+  etat.listes[type].push(`${s.jour} ${montantEnvoye} euros ${lib}${fois}${qui}`);
+  s.montant = ""; s.libelle = ""; s.fois = 0; s.mode = "total"; s.pour = "commun";
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
@@ -333,17 +416,23 @@ function ajouterArgent(type) {
 function formSalaire(z) {
   const s = etat.s;
   z.innerHTML = `
-    <div class="champ"><label for="montant">Montant reçu
-      <span class="aide">Le net arrivé sur le compte. Envoie-le le jour où il arrive : il compte dans ce mois-là.</span></label>
+    <div class="champ"><label for="jour">Date</label>
+      <input type="date" id="jour" value="${s.jour}">
+      <span class="aide">Le jour où le salaire est arrivé sur le compte — il compte pour ce mois-là.</span></div>
+    <div class="champ"><label for="montant">Montant reçu <span class="aide">Le net arrivé sur le compte.</span></label>
       <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}"><span>€</span></div></div>
     <fieldset class="champ"><legend>Salaire de</legend><div class="puces" id="qui"></div></fieldset>
+    <p class="apercu" id="apercu"></p>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
     <p class="message" id="msg"></p>`;
   const q = z.querySelector("#qui");
   for (const [cle, nom] of [["maxime", "Maxime"], ["dounia", "Dounia"]])
     q.appendChild(puce(nom, s.qui === cle, () => { s.qui = cle; formSalaire(z); }));
+  const maj = () => { document.getElementById("apercu").innerHTML = `Comptera pour <strong>${moisDe(s.jour)}</strong>.`; };
+  z.querySelector("#jour").onchange = e => { s.jour = e.target.value; maj(); };
   z.querySelector("#montant").oninput = e => s.montant = e.target.value;
   z.querySelector("#ajouter").onclick = ajouterSalaire;
+  maj();
 }
 
 function ajouterSalaire() {
@@ -354,7 +443,7 @@ function ajouterSalaire() {
     document.getElementById("montant").setAttribute("aria-invalid", "true");
     return;
   }
-  etat.listes.SALAIRE.push(`${brut} euros salaire ${s.qui === "maxime" ? "Maxime" : "Dounia"}`);
+  etat.listes.SALAIRE.push(`${s.jour} ${brut} euros salaire ${s.qui === "maxime" ? "Maxime" : "Dounia"}`);
   s.montant = ""; s.qui = PROFIL;
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté.";
