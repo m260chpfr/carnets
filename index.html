@@ -513,13 +513,13 @@ fetch("libelles_historique.json", { cache: "no-store" })
   .then(d => { if (d && d.depenses) { historique = d.depenses; majSuggestionsMontant(); } })
   .catch(() => {});
 
-function montantsPourLibelle(lib) {
+function entreePourLibelle(lib) {
   const cle = sansAccent((lib || "").trim());
-  if (!historique || cle.length < 2) return [];
+  if (!historique || cle.length < 2) return null;
   // correspondance large : le libellé tapé contient une entrée connue, ou l'inverse
   // (ex. "conf" -> "conforama", ou "younited credit" -> "younited").
   const trouve = Object.keys(historique).find(k => k === cle || k.includes(cle) || cle.includes(k));
-  return trouve ? historique[trouve].montants : [];
+  return trouve ? historique[trouve] : null;
 }
 
 function majSuggestionsMontant(type) {
@@ -528,11 +528,12 @@ function majSuggestionsMontant(type) {
   const dl = document.getElementById("montants_recents");
   const aide = document.getElementById("aide-montants");
   if (!dl) return;
-  const L = montantsPourLibelle(etat.d.libelle);
+  const entree = entreePourLibelle(etat.d.libelle);
+  const L = entree ? entree.montants : [];
   dl.innerHTML = L.map(x => `<option value="${euros(Math.round(x.montant * 100))}">`).join("");
   if (aide) {
-    aide.textContent = L.length
-      ? "Déjà utilisé pour ce libellé : " + L.map(x => euros(Math.round(x.montant * 100)) + " €").join(" · ")
+    aide.textContent = entree
+      ? `Déjà utilisé pour « ${entree.libelle} » : ` + L.map(x => euros(Math.round(x.montant * 100)) + " €").join(" · ")
       : "";
   }
 }
