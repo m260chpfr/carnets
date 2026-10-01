@@ -355,7 +355,8 @@ function formArgent(z, type) {
     <div class="champ"><label for="jour">Date</label>
       <input type="date" id="jour" value="${s.jour}"></div>
     <div class="champ"><label for="montant">Montant</label>
-      <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}"><span>€</span></div></div>
+      <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}" ${type === "DEPENSE" ? 'list="montants_recents"' : ""}><span>€</span></div>
+      ${type === "DEPENSE" ? '<datalist id="montants_recents"></datalist><span class="aide" id="aide-montants"></span>' : ""}</div>
     <div class="champ"><label for="libelle">${type === "DEPENSE" ? "Pour quoi" : "D'où vient ce revenu"}
       <span class="aide">Un ou deux mots, sans prénom : « courses », « essence »…</span></label>
       <input type="text" id="libelle" list="libelles" autocomplete="off" value="${s.libelle.replace(/"/g, "&quot;")}">
@@ -381,9 +382,10 @@ function formArgent(z, type) {
   }
   z.querySelector("#jour").onchange = e => { s.jour = e.target.value; majApercu(type); };
   z.querySelector("#montant").oninput = e => { s.montant = e.target.value; majApercu(type); };
-  z.querySelector("#libelle").oninput = e => s.libelle = e.target.value;
+  z.querySelector("#libelle").oninput = e => { s.libelle = e.target.value; majSuggestionsMontant(type); };
   z.querySelector("#ajouter").onclick = () => ajouterArgent(type);
   majApercu(type);
+  majSuggestionsMontant(type);
 }
 
 function ajouterArgent(type) {
@@ -501,6 +503,39 @@ document.getElementById("envoyer").onclick = ouvrirGmail;
 document.getElementById("fait").onclick = () => { etat.listes[etat.onglet] = []; sauver(); document.getElementById("voile").classList.remove("ouvert"); tout(); };
 document.getElementById("garder").onclick = () => document.getElementById("voile").classList.remove("ouvert");
 document.querySelectorAll("[data-copie]").forEach(b => b.onclick = () => copier(b.dataset.copie, b));
+
+// Historique des montants déjà utilisés par libellé (généré côté serveur à
+// chaque dépense traitée, voir budget_historique_libelles.py). Absent ou
+// injoignable -> le carnet fonctionne normalement, juste sans suggestions.
+let historique = null;
+fetch("libelles_historique.json", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.depenses) { historique = d.depenses; majSuggestionsMontant(); } })
+  .catch(() => {});
+
+function montantsPourLibelle(lib) {
+  const cle = sansAccent((lib || "").trim());
+  if (!historique || cle.length < 2) return [];
+  // correspondance large : le libellé tapé contient une entrée connue, ou l'inverse
+  // (ex. "conf" -> "conforama", ou "younited credit" -> "younited").
+  const trouve = Object.keys(historique).find(k => k === cle || k.includes(cle) || cle.includes(k));
+  return trouve ? historique[trouve].montants : [];
+}
+
+function majSuggestionsMontant(type) {
+  const t = type || etat.onglet;
+  if (t !== "DEPENSE") return;
+  const dl = document.getElementById("montants_recents");
+  const aide = document.getElementById("aide-montants");
+  if (!dl) return;
+  const L = montantsPourLibelle(etat.d.libelle);
+  dl.innerHTML = L.map(x => `<option value="${euros(Math.round(x.montant * 100))}">`).join("");
+  if (aide) {
+    aide.textContent = L.length
+      ? "Déjà utilisé pour ce libellé : " + L.map(x => euros(Math.round(x.montant * 100)) + " €").join(" · ")
+      : "";
+  }
+}
 
 charger();
 tout();
