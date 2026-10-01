@@ -53,6 +53,9 @@ main{ max-width:560px; margin:0 auto; padding:14px 16px 150px; }
 .champ{ margin:0 0 20px; padding:0; border:0; min-width:0; }
 .champ > label, .champ > legend{ display:block; font-weight:700; font-size:17px; margin:0 0 8px; padding:0; }
 .aide{ display:block; font-weight:400; color:var(--encre-douce); font-size:15px; margin-top:2px; }
+.suggestion{ display:block; font-weight:700; color:var(--encre); font-size:17px; margin-top:8px;
+  padding:10px 12px; background:var(--carte); border:2px solid var(--poste); border-radius:10px; }
+.suggestion:empty{ display:none; border:0; padding:0; margin:0; }
 input[type=text], input[type=date], input[type=time]{
   width:100%; font:inherit; font-size:21px; color:var(--encre); background:var(--carte);
   border:2px solid var(--trait); border-radius:12px; padding:11px 14px; min-height:56px;
@@ -360,7 +363,7 @@ function formArgent(z, type) {
       <span class="aide">Un ou deux mots, sans prénom : « courses », « essence »…</span></label>
       <input type="text" id="libelle" list="libelles" autocomplete="off" value="${s.libelle.replace(/"/g, "&quot;")}">
       <datalist id="libelles">${LIBELLES.map(l => `<option value="${l}">`).join("")}</datalist>
-      ${type === "DEPENSE" ? '<span class="aide" id="aide-montants"></span>' : ""}</div>`;
+      ${type === "DEPENSE" ? '<span class="suggestion" id="aide-montants"></span>' : ""}</div>`;
   const champMontant = `
     <div class="champ"><label for="montant">Montant</label>
       <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}" ${type === "DEPENSE" ? 'list="montants_recents"' : ""}><span>€</span></div>
