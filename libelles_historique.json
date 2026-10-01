@@ -1,5 +1,5 @@
 {
-"genere_le":"2026-10-01T17:31:49",
+"genere_le":"2026-10-01T17:46:38",
 "depenses":{
 "loyer":{
 "libelle":"Loyer",
@@ -78,33 +78,6 @@
 {
 "montant":100.51,
 "derniere_fois":"2026-09-29"
-}
-]
-},
-"<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> amazon creme ventre dounia<br>147,20 euros extracteur de jus dounia<br>123,70 euros nouveau contrat auto 2 mensualites dounia<br>10 euros chez paul repas pour moi et avance claude dounia&nbsp;<div dir=\"auto\">10 euros carrefour&nbsp; dounia&nbsp;</div><div dir=\"auto\">14 spar course dounia</div></div>":{
-"libelle":"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> Amazon crème ventre Dounia<br>147,20 euros Extracteur de jus Dounia<br>123,70 euros Nouveau contrat auto 2 mensualités Dounia<br>10 euros Chez Paul repas pour moi et avance Claude Dounia&nbsp;<div dir=\"auto\">10 euros carrefour&nbsp; Dounia&nbsp;</div><div dir=\"auto\">14 spar course Dounia</div></div>",
-"montants":[
-{
-"montant":24.99,
-"derniere_fois":"2026-09-29"
-}
-]
-},
-"<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> nocibe cosmetiques dounia<br>59,48 euros picard dounia<br>2,58 euros cafe dounia</div>":{
-"libelle":"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> Nocibé cosmétiques Dounia<br>59,48 euros Picard Dounia<br>2,58 euros Café Dounia</div>",
-"montants":[
-{
-"montant":37.0,
-"derniere_fois":"2026-09-30"
-}
-]
-},
-"<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> remboursement decouvert dounia<br>140 euros mensualites canape dounia</div>":{
-"libelle":"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><div dir=\"auto\"> Remboursement Découvert Dounia<br>140 euros Mensualités canapé Dounia</div>",
-"montants":[
-{
-"montant":300.0,
-"derniere_fois":"2026-09-30"
 }
 ]
 }
