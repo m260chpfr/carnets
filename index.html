@@ -91,6 +91,7 @@ button:focus-visible, input:focus-visible{ outline:3px solid var(--poste); outli
 .liste{ margin-top:30px; }
 .liste h2{ font-size:19px; margin:0 0 4px; }
 .liste .sous{ color:var(--encre-douce); font-size:15px; margin:0 0 12px; }
+.liste .total{ color:var(--encre); font-size:17px; font-weight:700; margin:0 0 12px; }
 .ligne{ display:flex; align-items:center; gap:8px; background:var(--carte); border:1px solid var(--trait);
   border-left:5px solid var(--poste); border-radius:10px; padding:8px 6px 8px 12px; margin-bottom:8px; }
 .ligne .txt{ flex:1; font-size:17px; word-break:break-word; }
@@ -237,8 +238,8 @@ let etat = {
   onglet: ONGLETS[0][0],
   listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
   h: { jour: aujourdHui(), qui: "", deb: "", fin: "", presta: "", autre: "" },
-  d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui() },
-  r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui() },
+  d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui(), confirmerDoublon: false },
+  r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui(), confirmerDoublon: false },
   s: { montant: "", qui: PROFIL, jour: aujourdHui() },
 };
 
@@ -351,13 +352,33 @@ function majApercu(type) {
   zone.innerHTML = html;
 }
 
+// ───────────────────────────────── dépenses récentes (reprise rapide)
+// Indépendant de la liste « Prêt à partir » : survit à l'envoi, pour retrouver
+// en un tap une dépense récurrente (loyer, abonnement…) le mois suivant.
+const RECENTS_CLE = "carnet-recents-depense-" + PROFIL;
+const MAX_RECENTS = 15;
+
+function chargerRecents() {
+  try { return JSON.parse(localStorage.getItem(RECENTS_CLE) || "[]"); } catch (e) { return []; }
+}
+function enregistrerRecent(r) {
+  const cle = x => sansAccent(x.libelle) + "|" + x.montant + "|" + x.pour + "|" + x.fois + "|" + x.mode;
+  let L = chargerRecents().filter(x => cle(x) !== cle(r));
+  L.unshift(r);
+  try { localStorage.setItem(RECENTS_CLE, JSON.stringify(L.slice(0, MAX_RECENTS))); } catch (e) {}
+}
+
 function formArgent(z, type) {
   const s = type === "DEPENSE" ? etat.d : etat.r;
   const quiTitre = type === "DEPENSE" ? "Pour qui" : "À qui revient ce revenu";
+  const recents = type === "DEPENSE" ? chargerRecents() : [];
 
   const champJour = `
     <div class="champ"><label for="jour">Date</label>
       <input type="date" id="jour" value="${s.jour}"></div>`;
+  const champRecents = recents.length
+    ? `<fieldset class="champ"><legend>Reprendre une dépense récente</legend><div class="puces" id="recents"></div></fieldset>`
+    : "";
   const champLibelle = `
     <div class="champ"><label for="libelle">${type === "DEPENSE" ? "Pour quoi" : "D'où vient ce revenu"}
       <span class="aide">Un ou deux mots, sans prénom : « courses », « essence »…</span></label>
@@ -369,29 +390,39 @@ function formArgent(z, type) {
       <div class="somme"><input type="text" id="montant" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${s.montant}" ${type === "DEPENSE" ? 'list="montants_recents"' : ""}><span>€</span></div>
       ${type === "DEPENSE" ? '<datalist id="montants_recents"></datalist>' : ""}</div>`;
 
-  z.innerHTML = champJour + (type === "DEPENSE" ? champLibelle + champMontant : champMontant + champLibelle) + `
+  z.innerHTML = champJour + champRecents + (type === "DEPENSE" ? champLibelle + champMontant : champMontant + champLibelle) + `
     <fieldset class="champ"><legend>${quiTitre}</legend><div class="puces" id="pour"></div></fieldset>
     ${type === "DEPENSE" ? '<fieldset class="champ"><legend>Payé en plusieurs fois</legend><div class="puces" id="fois"></div></fieldset>' : ""}
     ${type === "DEPENSE" && s.fois ? '<fieldset class="champ"><legend>Le montant tapé ci-dessus est <span class="aide">« Total » si tu connais le prix complet, « Mensualité » si tu connais plutôt ce que ça te coûte par mois</span></legend><div class="puces" id="mode"></div></fieldset>' : ""}
     <p class="apercu" id="apercu"></p>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
     <p class="message" id="msg"></p>`;
+  if (recents.length) {
+    const rz = z.querySelector("#recents");
+    recents.forEach(r => rz.appendChild(puce(
+      `${r.libelle} · ${r.montant} €${r.fois ? " (" + r.fois + "x)" : ""}`, false,
+      () => {
+        s.libelle = r.libelle; s.montant = r.montant; s.pour = r.pour;
+        s.fois = r.fois; s.mode = r.mode; s.jour = aujourdHui(); s.confirmerDoublon = false;
+        formArgent(z, type);
+      })));
+  }
   const pour = z.querySelector("#pour");
   for (const [cle, nom] of [["commun", "Les deux (50/50)"], ["maxime", "Maxime"], ["dounia", "Dounia"]])
-    pour.appendChild(puce(nom, s.pour === cle, () => { s.pour = cle; formArgent(z, type); }));
+    pour.appendChild(puce(nom, s.pour === cle, () => { s.pour = cle; s.confirmerDoublon = false; formArgent(z, type); }));
   if (type === "DEPENSE") {
     const f = z.querySelector("#fois");
     for (const n of [0, 2, 3, 4, 10])
-      f.appendChild(puce(n ? n + " fois" : "En une fois", s.fois === n, () => { s.fois = n; formArgent(z, type); }));
+      f.appendChild(puce(n ? n + " fois" : "En une fois", s.fois === n, () => { s.fois = n; s.confirmerDoublon = false; formArgent(z, type); }));
     if (s.fois) {
       const md = z.querySelector("#mode");
       for (const [cle, nom] of [["total", "Total"], ["mensuel", "Mensualité"]])
-        md.appendChild(puce(nom, s.mode === cle, () => { s.mode = cle; formArgent(z, type); }));
+        md.appendChild(puce(nom, s.mode === cle, () => { s.mode = cle; s.confirmerDoublon = false; formArgent(z, type); }));
     }
   }
-  z.querySelector("#jour").onchange = e => { s.jour = e.target.value; majApercu(type); };
-  z.querySelector("#montant").oninput = e => { s.montant = e.target.value; majApercu(type); };
-  z.querySelector("#libelle").oninput = e => { s.libelle = e.target.value; majSuggestionsMontant(type); };
+  z.querySelector("#jour").onchange = e => { s.jour = e.target.value; s.confirmerDoublon = false; majApercu(type); };
+  z.querySelector("#montant").oninput = e => { s.montant = e.target.value; s.confirmerDoublon = false; majApercu(type); };
+  z.querySelector("#libelle").oninput = e => { s.libelle = e.target.value; s.confirmerDoublon = false; majSuggestionsMontant(type); };
   z.querySelector("#ajouter").onclick = () => ajouterArgent(type);
   majApercu(type);
   majSuggestionsMontant(type);
@@ -418,8 +449,16 @@ function ajouterArgent(type) {
     const cents = centsDepuis(s.montant) * s.fois;
     montantEnvoye = euros(cents);
   }
-  etat.listes[type].push(`${s.jour} ${montantEnvoye} euros ${lib}${fois}${qui}`);
-  s.montant = ""; s.libelle = ""; s.fois = 0; s.mode = "total"; s.pour = "commun";
+  const ligne = `${s.jour} ${montantEnvoye} euros ${lib}${fois}${qui}`;
+  if (etat.listes[type].includes(ligne) && !s.confirmerDoublon) {
+    s.confirmerDoublon = true;
+    msg.className = "message erreur";
+    msg.textContent = "Cette dépense est déjà dans la liste pour cette date. Appuie à nouveau sur « Ajouter » pour l'ajouter quand même.";
+    return;
+  }
+  etat.listes[type].push(ligne);
+  if (type === "DEPENSE") enregistrerRecent({ libelle: lib, montant: s.montant, pour: s.pour, fois: s.fois, mode: s.mode });
+  s.montant = ""; s.libelle = ""; s.fois = 0; s.mode = "total"; s.pour = "commun"; s.confirmerDoublon = false;
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
@@ -461,10 +500,25 @@ function ajouterSalaire() {
 }
 
 // ───────────────────────────────── liste et envoi
+// Somme des montants déjà dans la liste en attente (toutes sauf HEURES, qui n'a
+// pas de montant). Relit directement les lignes construites, pas besoin d'un état
+// séparé : chaque ligne commence par « AAAA-MM-JJ MONTANT euros ... ».
+function totalListe(type) {
+  if (type === "HEURES") return null;
+  let total = 0;
+  for (const ligne of etat.listes[type]) {
+    const m = ligne.match(/^\S+\s+([\d,]+)\s+euros/);
+    if (m) total += Math.round(Number(m[1].replace(",", ".")) * 100);
+  }
+  return total;
+}
+
 function dessinerListe() {
   const z = document.getElementById("liste"), L = etat.listes[etat.onglet];
   const nom = ONGLETS.find(o => o[0] === etat.onglet)[1].toLowerCase();
   z.innerHTML = `<h2>Prêt à partir</h2><p class="sous">Objet du mail : ${etat.onglet}</p>`;
+  const total = totalListe(etat.onglet);
+  if (total !== null && L.length) z.innerHTML += `<p class="total">Total : ${euros(total)} €</p>`;
   if (!L.length) { z.innerHTML += `<p class="vide">Rien pour l'instant. Remplis le formulaire puis « Ajouter à la liste ».</p>`; }
   L.forEach((ligne, i) => {
     const d = document.createElement("div"); d.className = "ligne";
