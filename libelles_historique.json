@@ -1,5 +1,5 @@
 {
-"genere_le":"2026-10-01T18:08:59",
+"genere_le":"2026-10-02T06:51:02",
 "depenses":{
 "loyer":{
 "libelle":"Loyer",
@@ -78,6 +78,123 @@
 {
 "montant":100.51,
 "derniere_fois":"2026-09-29"
+}
+]
+},
+"decouvert hello bank":{
+"libelle":"Decouvert hello bank",
+"montants":[
+{
+"montant":300.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"extracteur de jus":{
+"libelle":"Extracteur de jus",
+"montants":[
+{
+"montant":148.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"prelevement canape":{
+"libelle":"Prélèvement canapé",
+"montants":[
+{
+"montant":135.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"assurance voiture":{
+"libelle":"Assurance voiture",
+"montants":[
+{
+"montant":123.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"picard":{
+"libelle":"Picard",
+"montants":[
+{
+"montant":60.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"spar":{
+"libelle":"Spar",
+"montants":[
+{
+"montant":14.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"carrefour":{
+"libelle":"Carrefour",
+"montants":[
+{
+"montant":12.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"chez paul":{
+"libelle":"Chez Paul",
+"montants":[
+{
+"montant":10.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"nocibe cosmetiques":{
+"libelle":"Nocibé cosmétiques",
+"montants":[
+{
+"montant":37.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"pizza":{
+"libelle":"Pizza",
+"montants":[
+{
+"montant":27.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"boulangerie":{
+"libelle":"Boulangerie",
+"montants":[
+{
+"montant":13.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"amazon a verifier ?":{
+"libelle":"Amazon à vérifier ?",
+"montants":[
+{
+"montant":17.0,
+"derniere_fois":"2026-10-01"
+}
+]
+},
+"gynecologue cheque":{
+"libelle":"Gynécologue chèque",
+"montants":[
+{
+"montant":70.0,
+"derniere_fois":"2026-10-01"
 }
 ]
 }
