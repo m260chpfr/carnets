@@ -1,5 +1,5 @@
 {
-"genere_le":"2026-10-02T06:51:02",
+"genere_le":"2026-10-04T07:50:59",
 "depenses":{
 "loyer":{
 "libelle":"Loyer",
@@ -60,6 +60,14 @@
 {
 "montant":7.98,
 "derniere_fois":"2027-05-27"
+},
+{
+"montant":79.81,
+"derniere_fois":"2026-10-04"
+},
+{
+"montant":105.4,
+"derniere_fois":"2026-10-04"
 }
 ]
 },
@@ -139,6 +147,10 @@
 "libelle":"Carrefour",
 "montants":[
 {
+"montant":29.3,
+"derniere_fois":"2026-10-03"
+},
+{
 "montant":12.0,
 "derniere_fois":"2026-10-01"
 }
@@ -172,8 +184,12 @@
 ]
 },
 "boulangerie":{
-"libelle":"Boulangerie",
+"libelle":"boulangerie",
 "montants":[
+{
+"montant":36.0,
+"derniere_fois":"2026-10-02"
+},
 {
 "montant":13.0,
 "derniere_fois":"2026-10-01"
@@ -195,6 +211,99 @@
 {
 "montant":70.0,
 "derniere_fois":"2026-10-01"
+}
+]
+},
+"weldom poigne":{
+"libelle":"Weldom poigné",
+"montants":[
+{
+"montant":27.7,
+"derniere_fois":"2026-10-03"
+}
+]
+},
+"restaurant":{
+"libelle":"restaurant",
+"montants":[
+{
+"montant":70.0,
+"derniere_fois":"2026-10-02"
+}
+]
+},
+"enveloppe colis":{
+"libelle":"Enveloppe colis",
+"montants":[
+{
+"montant":4.98,
+"derniere_fois":"2026-10-04"
+}
+]
+},
+"temu":{
+"libelle":"Temu",
+"montants":[
+{
+"montant":74.57,
+"derniere_fois":"2027-01-02"
+},
+{
+"montant":13.5,
+"derniere_fois":"2026-12-03"
+},
+{
+"montant":4.33,
+"derniere_fois":"2026-12-03"
+}
+]
+},
+"lidl midi taf":{
+"libelle":"Lidl midi taf",
+"montants":[
+{
+"montant":8.32,
+"derniere_fois":"2026-10-04"
+},
+{
+"montant":3.79,
+"derniere_fois":"2026-10-04"
+}
+]
+},
+"abonnement 1fichier annuel":{
+"libelle":"Abonnement 1fichier annuel",
+"montants":[
+{
+"montant":12.5,
+"derniere_fois":"2026-10-04"
+}
+]
+},
+"amazo gant":{
+"libelle":"amazo gant",
+"montants":[
+{
+"montant":21.38,
+"derniere_fois":"2026-10-04"
+}
+]
+},
+"amazon chargeur-jeremy":{
+"libelle":"Amazon chargeur-Jérémy",
+"montants":[
+{
+"montant":25.64,
+"derniere_fois":"2026-10-04"
+}
+]
+},
+"aliexpress rbt colis perdu":{
+"libelle":"Aliexpress RBT colis perdu",
+"montants":[
+{
+"montant":137.47,
+"derniere_fois":"2026-10-04"
 }
 ]
 }
