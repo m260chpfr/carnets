@@ -60,6 +60,8 @@ input[type=text], input[type=date], input[type=time]{
   width:100%; font:inherit; font-size:21px; color:var(--encre); background:var(--carte);
   border:2px solid var(--trait); border-radius:12px; padding:11px 14px; min-height:56px;
 }
+select{ width:100%; font:inherit; font-size:19px; color:var(--encre); background:var(--carte);
+  border:2px solid var(--trait); border-radius:12px; padding:11px 14px; min-height:56px; }
 input[aria-invalid="true"]{ border-color:var(--erreur); }
 button:focus-visible, input:focus-visible{ outline:3px solid var(--poste); outline-offset:2px; }
 .deux{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -189,7 +191,9 @@ const DEST = CONFIG.d;
 const BENEFICIAIRES = CONFIG.b;
 document.title = PROFIL === "maxime" ? "Carnet de Maxime" : "Carnet de Dounia";
 document.getElementById("titre").textContent = document.title;
-const PRESTATIONS = ["Toilette", "Aide au lever", "Repas", "Ménage", "Courses", "Accompagnement"];
+const PRESTATIONS = ["Toilette", "Aide au lever", "Repas", "Ménage", "Courses", "Accompagnement",
+  "Prise de rendez-vous", "Mise en sécurité du domicile"];
+const TACHES_LINGE = ["Lavage du linge", "Étendage", "Pliage", "Rangement", "Repassage", "Couture"];
 const LIBELLES = ["courses", "essence", "restaurant", "pharmacie", "boulangerie", "tabac", "coiffeur",
   "vêtements", "cadeau", "vétérinaire", "croquettes", "parking", "péage", "cinéma", "amazon", "leboncoin"];
 const ONGLETS = PROFIL === "maxime"
@@ -237,7 +241,7 @@ function echeances(totalCents, n, jourISO) {
 let etat = {
   onglet: ONGLETS[0][0],
   listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
-  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], autreOn: false, autre: "" },
+  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], lingeOn: false, linge: [], autreOn: false, autre: "" },
   d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui(), confirmerDoublon: false },
   r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui(), confirmerDoublon: false },
   s: { montant: "", qui: PROFIL, jour: aujourdHui() },
@@ -292,6 +296,11 @@ function formHeures(z) {
     </div>
     <fieldset class="champ"><legend>Prestations <span class="aide">Facultatif — tu peux en choisir plusieurs</span></legend>
       <div class="puces" id="prestas"></div>
+      <div id="linge" style="margin-top:10px;${h.lingeOn ? "" : "display:none"}">
+        <label for="tache-linge" class="aide" style="margin-bottom:6px">Linge : quelles tâches ?</label>
+        <select id="tache-linge"><option value="">Ajouter une tâche…</option>${TACHES_LINGE.filter(t => !h.linge.includes(t)).map(t => `<option value="${t}">${t}</option>`).join("")}</select>
+        <div class="puces" id="taches" style="margin-top:8px"></div>
+      </div>
       <input type="text" id="autre" placeholder="Autre prestation" value="${h.autre}" style="margin-top:10px;${h.autreOn ? "" : "display:none"}">
     </fieldset>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
@@ -301,7 +310,11 @@ function formHeures(z) {
   const pr = z.querySelector("#prestas");
   for (const p of PRESTATIONS) pr.appendChild(puce(p, h.prestas.includes(p), () => {
     h.prestas = h.prestas.includes(p) ? h.prestas.filter(x => x !== p) : [...h.prestas, p]; formHeures(z); }));
+  pr.appendChild(puce("Linge", h.lingeOn, () => { h.lingeOn = !h.lingeOn; if (!h.lingeOn) h.linge = []; formHeures(z); }));
   pr.appendChild(puce("Autre…", h.autreOn, () => { h.autreOn = !h.autreOn; formHeures(z); }));
+  const tz = z.querySelector("#taches");
+  for (const t of h.linge) tz.appendChild(puce(t + " ✕", true, () => { h.linge = h.linge.filter(x => x !== t); formHeures(z); }));
+  z.querySelector("#tache-linge").onchange = e => { if (e.target.value) { h.linge.push(e.target.value); formHeures(z); } };
   z.querySelector("#jour").onchange = e => h.jour = e.target.value;
   z.querySelector("#deb").onchange = e => h.deb = e.target.value;
   z.querySelector("#fin").onchange = e => h.fin = e.target.value;
@@ -321,11 +334,12 @@ function ajouterHeure() {
   if (minutes(h.fin) <= minutes(h.deb)) return err("Le départ doit être après l'arrivée.");
   const [, mm, jj] = h.jour.split("-");
   const liste = [...h.prestas];
+  if (h.lingeOn) liste.push(h.linge.length ? "Linge (" + h.linge.map(t => t.toLowerCase()).join(", ") + ")" : "Linge");
   if (h.autreOn && h.autre.trim()) liste.push(h.autre.trim());
   const presta = liste.join(", ");
   const ligne = `${jj}/${mm} ${h.deb} ${h.fin} ${h.qui}` + (presta ? " " + presta : "");
   etat.listes.HEURES.push(ligne);
-  h.deb = ""; h.fin = ""; h.prestas = []; h.autreOn = false; h.autre = "";
+  h.deb = ""; h.fin = ""; h.prestas = []; h.lingeOn = false; h.linge = []; h.autreOn = false; h.autre = "";
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
