@@ -237,7 +237,7 @@ function echeances(totalCents, n, jourISO) {
 let etat = {
   onglet: ONGLETS[0][0],
   listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
-  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", presta: "", autre: "" },
+  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], autreOn: false, autre: "" },
   d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui(), confirmerDoublon: false },
   r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui(), confirmerDoublon: false },
   s: { montant: "", qui: PROFIL, jour: aujourdHui() },
@@ -290,17 +290,18 @@ function formHeures(z) {
       <div><label for="deb">Arrivée</label><input type="time" id="deb" value="${h.deb}" min="06:00" max="22:00"></div>
       <div><label for="fin">Départ</label><input type="time" id="fin" value="${h.fin}" min="06:00" max="22:00"></div>
     </div>
-    <fieldset class="champ"><legend>Prestation <span class="aide">Facultatif</span></legend>
+    <fieldset class="champ"><legend>Prestations <span class="aide">Facultatif — tu peux en choisir plusieurs</span></legend>
       <div class="puces" id="prestas"></div>
-      <input type="text" id="autre" placeholder="Autre prestation" value="${h.autre}" style="margin-top:10px;${h.presta === "__autre" ? "" : "display:none"}">
+      <input type="text" id="autre" placeholder="Autre prestation" value="${h.autre}" style="margin-top:10px;${h.autreOn ? "" : "display:none"}">
     </fieldset>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
     <p class="message" id="msg"></p>`;
   const noms = z.querySelector("#noms");
   for (const n of BENEFICIAIRES) noms.appendChild(puce(n, h.qui === n, () => { h.qui = n; formHeures(z); }));
   const pr = z.querySelector("#prestas");
-  for (const p of PRESTATIONS) pr.appendChild(puce(p, h.presta === p, () => { h.presta = (h.presta === p ? "" : p); formHeures(z); }));
-  pr.appendChild(puce("Autre…", h.presta === "__autre", () => { h.presta = (h.presta === "__autre" ? "" : "__autre"); formHeures(z); }));
+  for (const p of PRESTATIONS) pr.appendChild(puce(p, h.prestas.includes(p), () => {
+    h.prestas = h.prestas.includes(p) ? h.prestas.filter(x => x !== p) : [...h.prestas, p]; formHeures(z); }));
+  pr.appendChild(puce("Autre…", h.autreOn, () => { h.autreOn = !h.autreOn; formHeures(z); }));
   z.querySelector("#jour").onchange = e => h.jour = e.target.value;
   z.querySelector("#deb").onchange = e => h.deb = e.target.value;
   z.querySelector("#fin").onchange = e => h.fin = e.target.value;
@@ -319,10 +320,12 @@ function ajouterHeure() {
   if (minutes(h.deb) < 360 || minutes(h.fin) > 1320) return err("Les horaires doivent être entre 06:00 et 22:00.");
   if (minutes(h.fin) <= minutes(h.deb)) return err("Le départ doit être après l'arrivée.");
   const [, mm, jj] = h.jour.split("-");
-  let presta = h.presta === "__autre" ? h.autre.trim() : h.presta;
+  const liste = [...h.prestas];
+  if (h.autreOn && h.autre.trim()) liste.push(h.autre.trim());
+  const presta = liste.join(", ");
   const ligne = `${jj}/${mm} ${h.deb} ${h.fin} ${h.qui}` + (presta ? " " + presta : "");
   etat.listes.HEURES.push(ligne);
-  h.deb = ""; h.fin = ""; h.presta = ""; h.autre = "";
+  h.deb = ""; h.fin = ""; h.prestas = []; h.autreOn = false; h.autre = "";
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
