@@ -192,8 +192,12 @@ const BENEFICIAIRES = CONFIG.b;
 document.title = PROFIL === "maxime" ? "Carnet de Maxime" : "Carnet de Dounia";
 document.getElementById("titre").textContent = document.title;
 const PRESTATIONS = ["Toilette", "Aide au lever", "Repas", "Ménage", "Courses", "Accompagnement",
-  "Prise de rendez-vous", "Mise en sécurité du domicile"];
-const TACHES_LINGE = ["Lavage du linge", "Étendage", "Pliage", "Rangement", "Repassage", "Couture"];
+  "Prise de rendez-vous", "Mise en sécurité du domicile", "Linge"];
+// Prestations qui ouvrent un menu déroulant à choix multiples (une pastille par choix).
+const SOUS_MENUS = {
+  "Ménage": { question: "Ménage : quelles pièces ?", options: ["Salle de bain", "Cuisine", "Chambres", "Pièce à vivre", "Poubelles"] },
+  "Linge": { question: "Linge : quelles tâches ?", options: ["Lavage du linge", "Étendage", "Pliage", "Rangement", "Repassage", "Couture"] },
+};
 const LIBELLES = ["courses", "essence", "restaurant", "pharmacie", "boulangerie", "tabac", "coiffeur",
   "vêtements", "cadeau", "vétérinaire", "croquettes", "parking", "péage", "cinéma", "amazon", "leboncoin"];
 const ONGLETS = PROFIL === "maxime"
@@ -241,7 +245,7 @@ function echeances(totalCents, n, jourISO) {
 let etat = {
   onglet: ONGLETS[0][0],
   listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
-  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], lingeOn: false, linge: [], autreOn: false, autre: "" },
+  h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], sous: {}, autreOn: false, autre: "" },
   d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui(), confirmerDoublon: false },
   r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui(), confirmerDoublon: false },
   s: { montant: "", qui: PROFIL, jour: aujourdHui() },
@@ -296,11 +300,7 @@ function formHeures(z) {
     </div>
     <fieldset class="champ"><legend>Prestations <span class="aide">Facultatif — tu peux en choisir plusieurs</span></legend>
       <div class="puces" id="prestas"></div>
-      <div id="linge" style="margin-top:10px;${h.lingeOn ? "" : "display:none"}">
-        <label for="tache-linge" class="aide" style="margin-bottom:6px">Linge : quelles tâches ?</label>
-        <select id="tache-linge"><option value="">Ajouter une tâche…</option>${TACHES_LINGE.filter(t => !h.linge.includes(t)).map(t => `<option value="${t}">${t}</option>`).join("")}</select>
-        <div class="puces" id="taches" style="margin-top:8px"></div>
-      </div>
+      <div id="sous-menus"></div>
       <input type="text" id="autre" placeholder="Autre prestation" value="${h.autre}" style="margin-top:10px;${h.autreOn ? "" : "display:none"}">
     </fieldset>
     <button class="ajouter" id="ajouter" type="button">Ajouter à la liste</button>
@@ -308,13 +308,31 @@ function formHeures(z) {
   const noms = z.querySelector("#noms");
   for (const n of BENEFICIAIRES) noms.appendChild(puce(n, h.qui === n, () => { h.qui = n; formHeures(z); }));
   const pr = z.querySelector("#prestas");
-  for (const p of PRESTATIONS) pr.appendChild(puce(p, h.prestas.includes(p), () => {
-    h.prestas = h.prestas.includes(p) ? h.prestas.filter(x => x !== p) : [...h.prestas, p]; formHeures(z); }));
-  pr.appendChild(puce("Linge", h.lingeOn, () => { h.lingeOn = !h.lingeOn; if (!h.lingeOn) h.linge = []; formHeures(z); }));
+  for (const p of PRESTATIONS) {
+    if (SOUS_MENUS[p]) {
+      pr.appendChild(puce(p, !!h.sous[p], () => { if (h.sous[p]) delete h.sous[p]; else h.sous[p] = []; formHeures(z); }));
+    } else {
+      pr.appendChild(puce(p, h.prestas.includes(p), () => {
+        h.prestas = h.prestas.includes(p) ? h.prestas.filter(x => x !== p) : [...h.prestas, p]; formHeures(z); }));
+    }
+  }
   pr.appendChild(puce("Autre…", h.autreOn, () => { h.autreOn = !h.autreOn; formHeures(z); }));
-  const tz = z.querySelector("#taches");
-  for (const t of h.linge) tz.appendChild(puce(t + " ✕", true, () => { h.linge = h.linge.filter(x => x !== t); formHeures(z); }));
-  z.querySelector("#tache-linge").onchange = e => { if (e.target.value) { h.linge.push(e.target.value); formHeures(z); } };
+  const zs = z.querySelector("#sous-menus");
+  for (const nom of Object.keys(SOUS_MENUS)) {
+    const choix = h.sous[nom];
+    if (!choix) continue;
+    const def = SOUS_MENUS[nom];
+    const bloc = document.createElement("div");
+    bloc.style.marginTop = "10px";
+    const idSel = "sel-" + nom.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "");
+    bloc.innerHTML = `<label for="${idSel}" class="aide" style="margin-bottom:6px">${def.question}</label>
+      <select id="${idSel}"><option value="">Ajouter…</option>${def.options.filter(o => !choix.includes(o)).map(o => `<option value="${o}">${o}</option>`).join("")}</select>
+      <div class="puces" style="margin-top:8px"></div>`;
+    bloc.querySelector("select").onchange = e => { if (e.target.value) { choix.push(e.target.value); formHeures(z); } };
+    const pz = bloc.querySelector(".puces");
+    for (const o of choix) pz.appendChild(puce(o + " ✕", true, () => { h.sous[nom] = choix.filter(x => x !== o); formHeures(z); }));
+    zs.appendChild(bloc);
+  }
   z.querySelector("#jour").onchange = e => h.jour = e.target.value;
   z.querySelector("#deb").onchange = e => h.deb = e.target.value;
   z.querySelector("#fin").onchange = e => h.fin = e.target.value;
@@ -334,12 +352,15 @@ function ajouterHeure() {
   if (minutes(h.fin) <= minutes(h.deb)) return err("Le départ doit être après l'arrivée.");
   const [, mm, jj] = h.jour.split("-");
   const liste = [...h.prestas];
-  if (h.lingeOn) liste.push(h.linge.length ? "Linge (" + h.linge.map(t => t.toLowerCase()).join(", ") + ")" : "Linge");
+  for (const nom of Object.keys(SOUS_MENUS)) {
+    const choix = h.sous[nom];
+    if (choix) liste.push(choix.length ? nom + " (" + choix.map(t => t.toLowerCase()).join(", ") + ")" : nom);
+  }
   if (h.autreOn && h.autre.trim()) liste.push(h.autre.trim());
   const presta = liste.join(", ");
   const ligne = `${jj}/${mm} ${h.deb} ${h.fin} ${h.qui}` + (presta ? " " + presta : "");
   etat.listes.HEURES.push(ligne);
-  h.deb = ""; h.fin = ""; h.prestas = []; h.lingeOn = false; h.linge = []; h.autreOn = false; h.autre = "";
+  h.deb = ""; h.fin = ""; h.prestas = []; h.sous = {}; h.autreOn = false; h.autre = "";
   sauver(); tout();
   const m = document.getElementById("msg"); m.className = "message ok"; m.textContent = "Ajouté. Tu peux en saisir une autre.";
 }
