@@ -201,8 +201,8 @@ const SOUS_MENUS = {
 const LIBELLES = ["courses", "essence", "restaurant", "pharmacie", "boulangerie", "tabac", "coiffeur",
   "vêtements", "cadeau", "vétérinaire", "croquettes", "parking", "péage", "cinéma", "amazon", "leboncoin"];
 const ONGLETS = PROFIL === "maxime"
-  ? [["HEURES", "Heures"], ["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"]]
-  : [["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"]];
+  ? [["HEURES", "Heures"], ["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"], ["RECAP", "Récap"]]
+  : [["DEPENSE", "Dépense"], ["REVENU", "Revenu"], ["SALAIRE", "Salaire"], ["RECAP", "Récap"]];
 const PRENOMS = ["maxime", "max", "dounia"];
 const CLE = "carnet-" + PROFIL;
 const MOIS_NOMS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -244,7 +244,7 @@ function echeances(totalCents, n, jourISO) {
 
 let etat = {
   onglet: ONGLETS[0][0],
-  listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [] },
+  listes: { HEURES: [], DEPENSE: [], REVENU: [], SALAIRE: [], RECAP: [] },
   h: { jour: aujourdHui(), qui: "", deb: "", fin: "", prestas: [], sous: {}, autreOn: false, autre: "" },
   d: { montant: "", libelle: "", pour: "commun", fois: 0, mode: "total", jour: aujourdHui(), confirmerDoublon: false },
   r: { montant: "", libelle: "", pour: "commun", jour: aujourdHui(), confirmerDoublon: false },
@@ -286,6 +286,17 @@ function puce(txt, actif, onclick) {
   b.setAttribute("aria-pressed", actif ? "true" : "false");
   b.onclick = onclick;
   return b;
+}
+
+function formRecap(z) {
+  const auj = new Date(), mk = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  const prec = new Date(auj.getFullYear(), auj.getMonth() - 1, 1);
+  const choix = [["Ce mois-ci", mk(auj)], ["Mois dernier", mk(prec)]];
+  z.innerHTML = `<div class="champ"><label>Récapitulatif des heures</label>
+    <p class="sous">Choisis le mois : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail en quelques minutes.</p>
+    <div class="noms" id="recap-choix"></div></div>`;
+  const zone = z.querySelector("#recap-choix"), cur = etat.listes.RECAP[0];
+  for (const [nom, m] of choix) zone.appendChild(puce(nom, cur === "mois: " + m, () => { etat.listes.RECAP = ["mois: " + m]; sauver(); tout(); }));
 }
 
 function formHeures(z) {
@@ -542,7 +553,7 @@ function ajouterSalaire() {
 // pas de montant). Relit directement les lignes construites, pas besoin d'un état
 // séparé : chaque ligne commence par « AAAA-MM-JJ MONTANT euros ... ».
 function totalListe(type) {
-  if (type === "HEURES") return null;
+  if (type === "HEURES" || type === "RECAP") return null;
   let total = 0;
   for (const ligne of etat.listes[type]) {
     const m = ligne.match(/^\S+\s+([\d,]+)\s+euros/);
@@ -557,7 +568,8 @@ function dessinerListe() {
   z.innerHTML = `<h2>Prêt à partir</h2><p class="sous">Objet du mail : ${etat.onglet}</p>`;
   const total = totalListe(etat.onglet);
   if (total !== null && L.length) z.innerHTML += `<p class="total">Total : ${euros(total)} €</p>`;
-  if (!L.length) { z.innerHTML += `<p class="vide">Rien pour l'instant. Remplis le formulaire puis « Ajouter à la liste ».</p>`; }
+  if (!L.length && etat.onglet === "RECAP") { z.innerHTML += `<p class="vide">Choisis un mois ci-dessus.</p>`; }
+  else if (!L.length) { z.innerHTML += `<p class="vide">Rien pour l'instant. Remplis le formulaire puis « Ajouter à la liste ».</p>`; }
   L.forEach((ligne, i) => {
     const d = document.createElement("div"); d.className = "ligne";
     const t = document.createElement("div"); t.className = "txt"; t.textContent = ligne;
@@ -575,7 +587,7 @@ function ouvrirGmail() {
   const L = etat.listes[etat.onglet];
   if (!L.length) return;
   const texte = L.join("\n");
-  const url = "mailto:" + DEST + "?subject=" + encodeURIComponent(etat.onglet) + "&body=" + encodeURIComponent(texte);
+  const url = "mailto:" + DEST + "?subject=" + encodeURIComponent(etat.onglet === "RECAP" ? "RECAP" : etat.onglet) + "&body=" + encodeURIComponent(texte);
   document.getElementById("c-dest").value = DEST;
   document.getElementById("c-objet").value = etat.onglet;
   document.getElementById("c-texte").value = texte;
@@ -595,6 +607,7 @@ function tout() {
   dessinerOnglets();
   const z = document.getElementById("formulaire");
   if (etat.onglet === "HEURES") formHeures(z);
+  else if (etat.onglet === "RECAP") formRecap(z);
   else if (etat.onglet === "SALAIRE") formSalaire(z);
   else formArgent(z, etat.onglet);
   dessinerListe();
