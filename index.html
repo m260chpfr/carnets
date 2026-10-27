@@ -293,11 +293,15 @@ function formRecap(z) {
   const auj = new Date(), mk = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   const prec = new Date(auj.getFullYear(), auj.getMonth() - 1, 1);
   const choix = [["Ce mois-ci", mk(auj)], ["Mois dernier", mk(prec)]];
+  if (!etat.recapPour) etat.recapPour = "moi";
   z.innerHTML = `<div class="champ"><label>Récapitulatif des heures</label>
-    <p class="sous">Choisis le mois : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail en quelques minutes.</p>
-    <div class="noms" id="recap-choix"></div></div>`;
-  const zone = z.querySelector("#recap-choix"), cur = etat.listes.RECAP[0];
-  for (const [nom, m] of choix) zone.appendChild(puce(nom, cur === "mois: " + m, () => { etat.listes.RECAP = ["mois: " + m]; sauver(); tout(); }));
+    <p class="sous">Choisis le mois et le destinataire : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail en quelques minutes.</p>
+    <div class="noms" id="recap-choix"></div></div>
+    <div class="champ"><label>Envoyer à</label><div class="noms" id="recap-pour"></div></div>`;
+  const cur = (etat.listes.RECAP[0] || "").replace("mois: ", "");
+  const maj = (m, pour) => { etat.recapPour = pour; etat.listes.RECAP = m ? ["mois: " + m, "pour: " + pour] : []; sauver(); tout(); };
+  for (const [nom, m] of choix) z.querySelector("#recap-choix").appendChild(puce(nom, cur === m, () => maj(m, etat.recapPour)));
+  for (const [nom, v] of [["Moi", "moi"], ["Dounia (son mail perso)", "dounia"]]) z.querySelector("#recap-pour").appendChild(puce(nom, etat.recapPour === v, () => maj(cur, v)));
 }
 
 function formHeures(z) {
