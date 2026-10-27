@@ -150,7 +150,7 @@ summary{ cursor:pointer; font-weight:700; min-height:44px; display:flex; align-i
 <div class="voile" id="voile" role="dialog" aria-modal="true" aria-labelledby="titre-feuille">
   <div class="feuille">
     <h2 id="titre-feuille">Dernière étape dans Gmail</h2>
-    <p id="msg-recap" hidden><strong>Récap demandé.</strong> Une fois le mail envoyé, le récap arrive par mail sous 10 minutes environ.</p>
+    <p id="msg-recap" hidden><strong>Récap demandé.</strong> Une fois le mail envoyé, le récap arrive par mail dans un délai de 10 minutes maximum.</p>
     <p>Gmail vient de s'ouvrir avec le mail prêt. Vérifie que la ligne <strong>De&nbsp;:</strong> montre bien ton adresse, puis appuie sur la flèche d'envoi.</p>
     <div class="actions">
       <button class="plein principal" id="fait" type="button">C'est envoyé, vider la liste</button>
@@ -295,7 +295,7 @@ function formRecap(z) {
   const choix = [["Ce mois-ci", mk(auj)], ["Mois dernier", mk(prec)]];
   if (!etat.recapPour) etat.recapPour = "moi";
   z.innerHTML = `<div class="champ"><label>Récapitulatif des heures</label>
-    <p class="sous">Choisis le mois et le destinataire : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail en quelques minutes.</p>
+    <p class="sous">Choisis le mois et le destinataire : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail dans un délai de 10 minutes maximum.</p>
     <div class="noms" id="recap-choix"></div></div>
     <div class="champ"><label>Envoyer à</label><div class="noms" id="recap-pour"></div></div>`;
   const cur = (etat.listes.RECAP[0] || "").replace("mois: ", "");
