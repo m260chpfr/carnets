@@ -189,7 +189,7 @@ if (!CONFIG || !["maxime", "dounia"].includes(CONFIG.p) || !CONFIG.d.includes("@
 }
 const PROFIL = CONFIG.p;
 const DEST = CONFIG.d;
-const BENEFICIAIRES = CONFIG.b;
+const BENEFICIAIRES = CONFIG.b.concat(["Raymond"].filter(n => !CONFIG.b.some(x => x.toLowerCase() === n.toLowerCase())));
 document.title = PROFIL === "maxime" ? "Carnet de Maxime" : "Carnet de Dounia";
 document.getElementById("titre").textContent = document.title;
 const PRESTATIONS = ["Toilette", "Aide au lever", "Repas", "Ménage", "Courses", "Accompagnement",
