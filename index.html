@@ -292,16 +292,34 @@ function puce(txt, actif, onclick) {
 function formRecap(z) {
   const auj = new Date(), mk = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   const prec = new Date(auj.getFullYear(), auj.getMonth() - 1, 1);
-  const choix = [["Ce mois-ci", mk(auj)], ["Mois dernier", mk(prec)]];
-  if (!etat.recapPour) etat.recapPour = "moi";
-  z.innerHTML = `<div class="champ"><label>Récapitulatif des heures</label>
-    <p class="sous">Choisis le mois et le destinataire : le récap (par bénéficiaire, jours à vérifier, détail par jour) arrive par mail dans un délai de 10 minutes maximum.</p>
-    <div class="noms" id="recap-choix"></div></div>
-    <div class="champ"><label>Envoyer à</label><div class="noms" id="recap-pour"></div></div>`;
-  const cur = (etat.listes.RECAP[0] || "").replace("mois: ", "");
-  const maj = (m, pour) => { etat.recapPour = pour; etat.listes.RECAP = m ? ["mois: " + m, "pour: " + pour] : []; sauver(); tout(); };
-  for (const [nom, m] of choix) z.querySelector("#recap-choix").appendChild(puce(nom, cur === m, () => maj(m, etat.recapPour)));
-  for (const [nom, v] of [["Moi", "moi"], ["Dounia (son mail perso)", "dounia"]]) z.querySelector("#recap-pour").appendChild(puce(nom, etat.recapPour === v, () => maj(cur, v)));
+  const mois = [["Ce mois-ci", mk(auj)], ["Mois dernier", mk(prec)]];
+  const r = etat.recap = Object.assign({ type: "recap", mois: "", pour: "moi", qui: "tous", mode: "detail" }, etat.recap);
+  const MODES = [["heures", "Heures totales"], ["passages", "Passages (jours et horaires)"], ["detail", "Détail complet (avec prestations)"], ["tout", "Tout ensemble"]];
+  const opt = (liste, val) => liste.map(([v, n]) => `<option value="${v}"${v === val ? " selected" : ""}>${n}</option>`).join("");
+  z.innerHTML = `<div class="champ"><label>Que veux-tu recevoir par mail ?</label><div class="noms" id="r-type"></div></div>
+    <div class="champ"><label>Mois</label><div class="noms" id="r-mois"></div></div>
+    <div class="champ" id="r-det" hidden>
+      <label for="r-qui">Bénéficiaire</label>
+      <select id="r-qui">${opt([["tous", "Tous (un PDF chacun)"], ...BENEFICIAIRES.map(n => [n, n])], r.qui)}</select>
+      <label for="r-mode" style="margin-top:10px">Contenu</label>
+      <select id="r-mode">${opt(MODES, r.mode)}</select></div>
+    <div class="champ"><label>Envoyer à</label><div class="noms" id="r-pour"></div></div>
+    <p class="sous">Le mail arrive dans un délai de 10 minutes maximum.</p>`;
+  const maj = () => {
+    if (!r.mois) { etat.listes.RECAP = []; }
+    else {
+      const L = ["mois: " + r.mois, "pour: " + r.pour];
+      if (r.type === "detail") L.push("type: detail", "qui: " + r.qui, "mode: " + r.mode);
+      etat.listes.RECAP = L;
+    }
+    sauver(); tout();
+  };
+  for (const [n, v] of [["Récap du mois", "recap"], ["Détail par bénéficiaire", "detail"]]) z.querySelector("#r-type").appendChild(puce(n, r.type === v, () => { r.type = v; maj(); }));
+  for (const [n, m] of mois) z.querySelector("#r-mois").appendChild(puce(n, r.mois === m, () => { r.mois = m; maj(); }));
+  for (const [n, v] of [["Moi", "moi"], ["Dounia (son mail perso)", "dounia"]]) z.querySelector("#r-pour").appendChild(puce(n, r.pour === v, () => { r.pour = v; maj(); }));
+  z.querySelector("#r-det").hidden = r.type !== "detail";
+  z.querySelector("#r-qui").onchange = e => { r.qui = e.target.value; maj(); };
+  z.querySelector("#r-mode").onchange = e => { r.mode = e.target.value; maj(); };
 }
 
 function formHeures(z) {
@@ -575,7 +593,11 @@ function dessinerListe() {
   if (total !== null && L.length) z.innerHTML += `<p class="total">Total : ${euros(total)} €</p>`;
   if (!L.length && etat.onglet === "RECAP") { z.innerHTML += `<p class="vide">Choisis un mois ci-dessus.</p>`; }
   else if (!L.length) { z.innerHTML += `<p class="vide">Rien pour l'instant. Remplis le formulaire puis « Ajouter à la liste ».</p>`; }
-  L.forEach((ligne, i) => {
+  if (etat.onglet === "RECAP" && L.length) {
+    const d = document.createElement("div"); d.className = "ligne";
+    const t = document.createElement("div"); t.className = "txt"; t.textContent = "Demande prête (voir les choix ci-dessus)";
+    d.append(t); z.appendChild(d);
+  } else L.forEach((ligne, i) => {
     const d = document.createElement("div"); d.className = "ligne";
     const t = document.createElement("div"); t.className = "txt"; t.textContent = ligne;
     const b = document.createElement("button"); b.className = "retirer"; b.type = "button"; b.textContent = "Retirer";
@@ -585,7 +607,7 @@ function dessinerListe() {
   });
   const env = document.getElementById("envoyer");
   env.disabled = !L.length;
-  env.textContent = L.length ? `Ouvrir dans Gmail · ${L.length} ligne${L.length > 1 ? "s" : ""}` : "Ouvrir dans Gmail";
+  env.textContent = (L.length && etat.onglet !== "RECAP") ? `Ouvrir dans Gmail · ${L.length} ligne${L.length > 1 ? "s" : ""}` : "Ouvrir dans Gmail";
 }
 
 function ouvrirGmail() {
