@@ -376,6 +376,29 @@ function formHeures(z) {
 
 function minutes(t) { const [a, b] = t.split(":").map(Number); return a * 60 + b; }
 
+// Contrôles avant ajout : date future ou de plus de 15 jours, chevauchement avec une
+// ligne déjà dans la liste (format « JJ/MM HH:MM HH:MM Nom … »). Renvoie les messages.
+function controlesHeure(h, liste, maintenant) {
+  const out = [];
+  const auj = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
+  const [a, m, j] = h.jour.split("-").map(Number);
+  const jour = new Date(a, m - 1, j);
+  const ecart = Math.round((auj - jour) / 86400000);
+  if (ecart < 0) out.push("Attention : ce jour est dans le futur.");
+  else if (ecart > 15) out.push("Attention : ce jour date de plus de 15 jours (" + ecart + " jours).");
+  const cle = String(j).padStart(2, "0") + "/" + String(m).padStart(2, "0");
+  const d1 = minutes(h.deb), f1 = minutes(h.fin);
+  for (const l of liste) {
+    const x = /^(\d{2}\/\d{2}) (\d{2}:\d{2}) (\d{2}:\d{2}) (\S+)/.exec(l);
+    if (!x || x[1] !== cle) continue;
+    if (d1 < minutes(x[3]) && minutes(x[2]) < f1) {
+      out.push("Attention : chevauche « " + x[4] + " " + x[2] + "-" + x[3] + " » déjà dans la liste.");
+      break;
+    }
+  }
+  return out;
+}
+
 function ajouterHeure() {
   const h = etat.h, msg = document.getElementById("msg");
   const err = t => { msg.className = "message erreur"; msg.textContent = t; };
@@ -385,6 +408,16 @@ function ajouterHeure() {
   if (minutes(h.deb) < 360 || minutes(h.fin) > 1320) return err("Les horaires doivent être entre 06:00 et 22:00.");
   if (minutes(h.fin) <= minutes(h.deb)) return err("Le départ doit être après l'arrivée.");
   const [, mm, jj] = h.jour.split("-");
+  // Avertissements : un second appui sur « Ajouter » confirme la ligne telle quelle.
+  const alertes = controlesHeure(h, etat.listes.HEURES, new Date());
+  const signature = [h.jour, h.qui, h.deb, h.fin].join("|");
+  if (alertes.length && h.confirmer !== signature) {
+    h.confirmer = signature;
+    msg.className = "message erreur";
+    msg.textContent = alertes.join(" ") + " Appuie à nouveau sur « Ajouter » pour l'ajouter quand même.";
+    return;
+  }
+  h.confirmer = "";
   const liste = [...h.prestas];
   for (const nom of Object.keys(SOUS_MENUS)) {
     const choix = h.sous[nom];
